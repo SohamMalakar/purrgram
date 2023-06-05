@@ -38,7 +38,7 @@ $(DEBUG_DIR)/%.o: $(SRC_DIR)/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 run: debug
-	@$(DEBUG_DIR)/project
+	@$(DEBUG_DIR)/project $(ARGS)
 
 clean:
 	@rm -rf $(BUILD_DIR)
