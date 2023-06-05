@@ -1,0 +1,7 @@
+if x < 5
+    print("hello")
+elif x > 10
+    print("world")
+else
+    print("aliens")
+end
