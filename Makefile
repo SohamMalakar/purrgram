@@ -14,6 +14,7 @@ OBJ_FILES := $(patsubst $(SRC_DIR)/%.c,$(DEBUG_DIR)/%.o,$(SRC_FILES))
 
 # Flags
 CFLAGS = -Wall -Wextra -I$(SRC_DIR)
+LDFLAGS = -lm
 
 # Targets
 .PHONY: all debug release clean run
@@ -26,12 +27,12 @@ release: $(RELEASE_DIR)/project
 
 $(DEBUG_DIR)/project: $(OBJ_FILES)
 	@mkdir -p $(DEBUG_DIR)
-	$(CC) $(CFLAGS) $^ -o $@
+	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
 $(RELEASE_DIR)/project: CFLAGS += -O2
 $(RELEASE_DIR)/project: $(SRC_FILES)
 	@mkdir -p $(RELEASE_DIR)
-	$(CC) $(CFLAGS) $^ -o $@
+	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
 $(DEBUG_DIR)/%.o: $(SRC_DIR)/%.c
 	@mkdir -p $(DEBUG_DIR)

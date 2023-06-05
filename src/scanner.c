@@ -99,17 +99,10 @@ static void skipWhitespace()
             scanner.line++;
             advance();
             break;
-        case '/':
-            if (peekNext() == '/')
-            {
-                // A comment goes until the end of the line.
-                while (peek() != '\n' && !isAtEnd())
-                    advance();
-            }
-            else
-            {
-                return;
-            }
+        case '#':
+            // A comment goes until the end of the line.
+            while (peek() != '\n' && !isAtEnd())
+                advance();
             break;
         default:
             return;
@@ -293,9 +286,9 @@ Token scanToken()
     case '+':
         return makeToken(TOKEN_PLUS);
     case '/':
-        return makeToken(TOKEN_SLASH);
+        return makeToken(match('/') ? TOKEN_SLASH_SLASH : TOKEN_SLASH);
     case '*':
-        return makeToken(TOKEN_STAR);
+        return makeToken(match('*') ? TOKEN_STAR_STAR : TOKEN_STAR);
     case '%':
         return makeToken(TOKEN_PERCENT);
     case '!':

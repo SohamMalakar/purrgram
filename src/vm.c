@@ -1,3 +1,4 @@
+#include <math.h>
 #include <stdio.h>
 
 #include "common.h"
@@ -31,6 +32,11 @@ Value pop()
 {
     vm.stackTop--;
     return *vm.stackTop;
+}
+
+inline static Value mod(Value x, Value y)
+{
+    return x - y * floor(x / y);
 }
 
 static InterpretResult run()
@@ -79,6 +85,24 @@ static InterpretResult run()
         case OP_DIVIDE:
             BINARY_OP(/);
             break;
+        case OP_INTDIV: {
+            double b = pop();
+            double a = pop();
+            push(floor(a / b));
+            break;
+        }
+        case OP_MOD: {
+            double b = pop();
+            double a = pop();
+            push(mod(a, b));
+            break;
+        }
+        case OP_POW: {
+            double b = pop();
+            double a = pop();
+            push(pow(a, b));
+            break;
+        }
         case OP_NEGATE:
             push(-pop());
             break;
@@ -97,6 +121,20 @@ static InterpretResult run()
 
 InterpretResult interpret(const char *source)
 {
-    compile(source);
-    return INTERPRET_OK;
+    Chunk chunk;
+    initChunk(&chunk);
+
+    if (!compile(source, &chunk))
+    {
+        freeChunk(&chunk);
+        return INTERPRET_COMPILE_ERROR;
+    }
+
+    vm.chunk = &chunk;
+    vm.ip = vm.chunk->code;
+
+    InterpretResult result = run();
+
+    freeChunk(&chunk);
+    return result;
 }
