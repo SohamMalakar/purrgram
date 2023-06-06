@@ -185,7 +185,7 @@ static TokenType identifierType()
                     switch (scanner.start[2])
                     {
                     case 'n':
-                        return checkKeyword(3, 1, "e", TOKEN_ELIF);
+                        return checkKeyword(3, 1, "e", TOKEN_NONE);
                     case 't':
                         return checkKeyword(2, 1, "t", TOKEN_NOT);
 
