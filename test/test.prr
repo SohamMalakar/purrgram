@@ -1,7 +1,19 @@
-if x < 5
-    print("hello")
-elif x > 10
-    print("world")
-else
-    print("aliens")
+var x = 10; # global variable
+
+if x > 0 and x <= 5:
+    print("hello");
+elif x < 0 or x >= 20:
+    print("world");
+else:
+    print("aliens");
+end
+
+def greet(name):
+    var temp = "hello, " + name + "!\n"; # local variable
+    return temp;
+end
+
+while x > 0:
+    print(greet("purrgram"));
+    x = x - 1;
 end
