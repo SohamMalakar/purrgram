@@ -25,14 +25,14 @@ debug: $(DEBUG_DIR)/project
 
 release: $(RELEASE_DIR)/project
 
+$(DEBUG_DIR)/project: CFLAGS += -g
 $(DEBUG_DIR)/project: $(OBJ_FILES)
 	@mkdir -p $(DEBUG_DIR)
 	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
-$(RELEASE_DIR)/project: CFLAGS += -O2
 $(RELEASE_DIR)/project: $(SRC_FILES)
 	@mkdir -p $(RELEASE_DIR)
-	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
+	$(CC) $(CFLAGS) -O2 $^ -o $@ $(LDFLAGS)
 
 $(DEBUG_DIR)/%.o: $(SRC_DIR)/%.c
 	@mkdir -p $(DEBUG_DIR)

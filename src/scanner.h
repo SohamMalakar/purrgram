@@ -44,6 +44,7 @@ typedef enum
     TOKEN_OR,
     TOKEN_RETURN,
     TOKEN_TRUE,
+    TOKEN_VAR,
     TOKEN_WHILE,
 
     TOKEN_ERROR,
