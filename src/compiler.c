@@ -749,7 +749,7 @@ static void ifStatement()
 
     while (!check(TOKEN_EOF) && !check(TOKEN_ELIF) && !check(TOKEN_ELSE) && !check(TOKEN_END))
     {
-        statement();
+        declaration();
     }
 
     int exitJump = emitJump(OP_JUMP);
@@ -766,7 +766,7 @@ static void ifStatement()
 
         while (!check(TOKEN_EOF) && !check(TOKEN_ELIF) && !check(TOKEN_ELSE) && !check(TOKEN_END))
         {
-            statement();
+            declaration();
         }
 
         int nextExitJump = emitJump(OP_JUMP);
@@ -789,7 +789,7 @@ static void ifStatement()
 
         while (!check(TOKEN_EOF) && !check(TOKEN_END))
         {
-            statement();
+            declaration();
         }
     }
 
@@ -834,7 +834,7 @@ static void whileStatement()
 
     while (!check(TOKEN_EOF) && !check(TOKEN_END))
     {
-        statement();
+        declaration();
     }
 
     emitLoop(loopStart);
