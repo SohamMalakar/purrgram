@@ -277,6 +277,8 @@ Token scanToken()
         return makeToken(TOKEN_LEFT_PAREN);
     case ')':
         return makeToken(TOKEN_RIGHT_PAREN);
+    case ':':
+        return makeToken(TOKEN_COLON);
     case ';':
         return makeToken(TOKEN_SEMICOLON);
     case ',':

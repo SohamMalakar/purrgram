@@ -60,6 +60,8 @@ Parser parser;
 Compiler *current = NULL;
 Chunk *compilingChunk;
 
+static int exitJumps[UINT8_COUNT];
+
 static Chunk *currentChunk()
 {
     return compilingChunk;
@@ -149,6 +151,26 @@ static void emitBytes(uint8_t byte1, uint8_t byte2)
     emitByte(byte2);
 }
 
+static void emitLoop(int loopStart)
+{
+    emitByte(OP_LOOP);
+
+    int offset = currentChunk()->count - loopStart + 2;
+    if (offset > UINT16_MAX)
+        error("Loop body too large.");
+
+    emitByte((offset >> 8) & 0xff);
+    emitByte(offset & 0xff);
+}
+
+static int emitJump(uint8_t instruction)
+{
+    emitByte(instruction);
+    emitByte(0xff);
+    emitByte(0xff);
+    return currentChunk()->count - 2;
+}
+
 static void emitReturn()
 {
     emitByte(OP_RETURN);
@@ -169,6 +191,20 @@ static uint8_t makeConstant(Value value)
 static void emitConstant(Value value)
 {
     emitBytes(OP_CONSTANT, makeConstant(value));
+}
+
+static void patchJump(int offset)
+{
+    // -2 to adjust for the bytecode for the jump offset itself.
+    int jump = currentChunk()->count - offset - 2;
+
+    if (jump > UINT16_MAX)
+    {
+        error("Too much code to jump over.");
+    }
+
+    currentChunk()->code[offset] = (jump >> 8) & 0xff;
+    currentChunk()->code[offset + 1] = jump & 0xff;
 }
 
 static void initCompiler(Compiler *compiler)
@@ -308,6 +344,16 @@ static void defineVariable(uint8_t global)
     emitBytes(OP_DEFINE_GLOBAL, global);
 }
 
+static void and_(bool canAssign)
+{
+    int endJump = emitJump(OP_JUMP_IF_FALSE);
+
+    emitByte(OP_POP);
+    parsePrecedence(PREC_AND);
+
+    patchJump(endJump);
+}
+
 static void binary(bool canAssign)
 {
     TokenType operatorType = parser.previous.type;
@@ -388,6 +434,18 @@ static void number(bool canAssign)
 {
     double value = strtod(parser.previous.start, NULL);
     emitConstant(NUMBER_VAL(value));
+}
+
+static void or_(bool canAssign)
+{
+    int elseJump = emitJump(OP_JUMP_IF_FALSE);
+    int endJump = emitJump(OP_JUMP);
+
+    patchJump(elseJump);
+    emitByte(OP_POP);
+
+    parsePrecedence(PREC_OR);
+    patchJump(endJump);
 }
 
 static void string(bool canAssign)
@@ -472,7 +530,7 @@ ParseRule rules[] = {
     [TOKEN_IDENTIFIER] = {variable, NULL, PREC_NONE},
     [TOKEN_STRING] = {string, NULL, PREC_NONE},
     [TOKEN_NUMBER] = {number, NULL, PREC_NONE},
-    [TOKEN_AND] = {NULL, NULL, PREC_NONE},
+    [TOKEN_AND] = {NULL, and_, PREC_AND},
     [TOKEN_BREAK] = {NULL, NULL, PREC_NONE},
     [TOKEN_CONTINUE] = {NULL, NULL, PREC_NONE},
     [TOKEN_DEF] = {NULL, NULL, PREC_NONE},
@@ -483,7 +541,7 @@ ParseRule rules[] = {
     [TOKEN_IF] = {NULL, NULL, PREC_NONE},
     [TOKEN_NONE] = {literal, NULL, PREC_NONE},
     [TOKEN_NOT] = {unary, NULL, PREC_NONE},
-    [TOKEN_OR] = {NULL, NULL, PREC_NONE},
+    [TOKEN_OR] = {NULL, or_, PREC_OR},
     [TOKEN_RETURN] = {NULL, NULL, PREC_NONE},
     [TOKEN_TRUE] = {literal, NULL, PREC_NONE},
     [TOKEN_VAR] = {NULL, NULL, PREC_NONE},
@@ -579,6 +637,95 @@ static void expressionStatement()
     emitByte(OP_POP);
 }
 
+static void ifStatement()
+{
+    int exitJumpIndex = 0;
+
+    expression();
+    consume(TOKEN_COLON, "Expect ':' after if condition.");
+
+    int elseJump = emitJump(OP_JUMP_IF_FALSE);
+    emitByte(OP_POP);
+
+    while (!check(TOKEN_EOF) && !check(TOKEN_ELIF) && !check(TOKEN_ELSE) && !check(TOKEN_END))
+    {
+        statement();
+    }
+
+    int exitJump = emitJump(OP_JUMP);
+    patchJump(elseJump);
+    emitByte(OP_POP);
+
+    while (match(TOKEN_ELIF))
+    {
+        expression();
+        consume(TOKEN_COLON, "Expect ':' after elif condition.");
+
+        int elifJump = emitJump(OP_JUMP_IF_FALSE);
+        emitByte(OP_POP);
+
+        while (!check(TOKEN_EOF) && !check(TOKEN_ELIF) && !check(TOKEN_ELSE) && !check(TOKEN_END))
+        {
+            statement();
+        }
+
+        int nextExitJump = emitJump(OP_JUMP);
+        patchJump(elifJump);
+        emitByte(OP_POP);
+
+        exitJumps[exitJumpIndex++] = exitJump;
+        exitJump = nextExitJump;
+
+        if (exitJumpIndex >= STACK_MAX)
+        {
+            error("Exit jump stack overflow.");
+            return;
+        }
+    }
+
+    if (match(TOKEN_ELSE))
+    {
+        consume(TOKEN_COLON, "Expect ':' after else keyword.");
+
+        while (!check(TOKEN_EOF) && !check(TOKEN_END))
+        {
+            statement();
+        }
+    }
+
+    exitJumps[exitJumpIndex++] = exitJump;
+
+    while (exitJumpIndex > 0)
+    {
+        int prevExitJump = exitJumps[--exitJumpIndex];
+        patchJump(prevExitJump);
+    }
+
+    consume(TOKEN_END, "Expect 'end' keyword after if-elif-else block.");
+}
+
+static void whileStatement()
+{
+    int loopStart = currentChunk()->count;
+    expression();
+    consume(TOKEN_COLON, "Expect ':' after condition.");
+
+    int exitJump = emitJump(OP_JUMP_IF_FALSE);
+    emitByte(OP_POP);
+
+    while (!check(TOKEN_EOF) && !check(TOKEN_END))
+    {
+        statement();
+    }
+
+    emitLoop(loopStart);
+
+    patchJump(exitJump);
+    emitByte(OP_POP);
+
+    consume(TOKEN_END, "Expect 'end' keyword after while block.");
+}
+
 static void declaration()
 {
     if (match(TOKEN_VAR))
@@ -596,7 +743,18 @@ static void declaration()
 
 static void statement()
 {
-    expressionStatement();
+    if (match(TOKEN_IF))
+    {
+        ifStatement();
+    }
+    else if (match(TOKEN_WHILE))
+    {
+        whileStatement();
+    }
+    else
+    {
+        expressionStatement();
+    }
 }
 
 bool compile(const char *source, Chunk *chunk)
