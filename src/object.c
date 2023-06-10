@@ -1,6 +1,8 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
+#include "escape.h"
 #include "memory.h"
 #include "object.h"
 #include "table.h"
@@ -102,8 +104,16 @@ void printObject(Value value)
     case OBJ_NATIVE:
         printf("<native fn>");
         break;
-    case OBJ_STRING:
-        printf("%s", AS_CSTRING(value));
+    case OBJ_STRING: {
+        char *converted = convert_string(AS_CSTRING(value));
+
+        if (converted != NULL)
+        {
+            printf("%s", converted);
+            free(converted);
+        }
+
         break;
+    }
     }
 }
