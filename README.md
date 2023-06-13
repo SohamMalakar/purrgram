@@ -18,25 +18,10 @@ project-name
 │ └───release
 │
 └───src
-│ │ chunk.c
-│ │ chunk.h
-│ │ common.h
-│ │ compiler.c
-│ │ compiler.h
-│ │ debug.c
-│ │ debug.h
-│ │ main.c
-│ │ memory.c
-│ │ memory.h
-│ │ scanner.c
-│ │ scanner.h
-│ │ value.c
-│ │ value.h
-│ │ vm.c
-│ │ vm.h
+│ ...
 │
 └───test
-│ test.paw
+│ test.prr
 ```
 
 - `README.md`: Provides an overview of the project and instructions on how to use the Makefile.
