@@ -1,11 +1,11 @@
 var x = 10; # global variable
 
 if x > 0 and x <= 5:
-    print("hello");
+    print("hello\n");
 elif x < 0 or x >= 20:
-    print("world");
+    print("world\n");
 else:
-    print("aliens");
+    print("aliens\n");
 end
 
 def greet(name):

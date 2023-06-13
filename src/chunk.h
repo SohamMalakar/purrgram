@@ -28,6 +28,10 @@ typedef enum
     OP_POW,
     OP_NOT,
     OP_NEGATE,
+    OP_JUMP,
+    OP_JUMP_IF_FALSE,
+    OP_LOOP,
+    OP_CALL,
     OP_RETURN,
 } OpCode;
 
