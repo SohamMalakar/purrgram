@@ -69,7 +69,11 @@ typedef struct Compiler
 Parser parser;
 Compiler *current = NULL;
 
-static int exitJumps[UINT8_COUNT];
+static int *currentBreakJumps = NULL;
+static int *currentBreakJumpIndex = NULL;
+static int *currentLoopStart = NULL;
+
+static int loopDepth = 0;
 
 static Chunk *currentChunk()
 {
@@ -739,6 +743,7 @@ static void expressionStatement()
 
 static void ifStatement()
 {
+    int exitJumps[UINT8_COUNT];
     int exitJumpIndex = 0;
 
     expression();
@@ -776,9 +781,9 @@ static void ifStatement()
         exitJumps[exitJumpIndex++] = exitJump;
         exitJump = nextExitJump;
 
-        if (exitJumpIndex >= STACK_MAX)
+        if (exitJumpIndex >= UINT8_COUNT)
         {
-            error("Exit jump stack overflow.");
+            error("Too many elif statements inside a if-elif-else block.");
             return;
         }
     }
@@ -825,12 +830,20 @@ static void returnStatement()
 
 static void whileStatement()
 {
+    loopDepth++;
+    int breakJumps[UINT8_COUNT];
+    int breakJumpIndex = 0;
+
     int loopStart = currentChunk()->count;
     expression();
     consume(TOKEN_COLON, "Expect ':' after condition.");
 
     int exitJump = emitJump(OP_JUMP_IF_FALSE);
     emitByte(OP_POP);
+
+    currentBreakJumps = breakJumps;
+    currentBreakJumpIndex = &breakJumpIndex;
+    currentLoopStart = &loopStart;
 
     while (!check(TOKEN_EOF) && !check(TOKEN_END))
     {
@@ -840,9 +853,52 @@ static void whileStatement()
     emitLoop(loopStart);
 
     patchJump(exitJump);
+
+    while (breakJumpIndex--)
+    {
+        patchJump(breakJumps[breakJumpIndex]);
+    }
+
     emitByte(OP_POP);
 
     consume(TOKEN_END, "Expect 'end' keyword after while block.");
+    loopDepth--;
+}
+
+static void breakStatement()
+{
+    if (loopDepth == 0)
+    {
+        error("Can't break from outside of a loop.");
+        return;
+    }
+
+    if (*currentBreakJumpIndex >= UINT8_COUNT)
+    {
+        error("Too many break statements inside a loop.");
+        return;
+    }
+
+    currentBreakJumps[(*currentBreakJumpIndex)++] = emitJump(OP_JUMP);
+    consume(TOKEN_SEMICOLON, "Expect ';' after break keyword.");
+}
+
+static void continueStatement()
+{
+    if (loopDepth == 0)
+    {
+        error("Can't continue from outside of a loop.");
+        return;
+    }
+
+    if (*currentLoopStart >= UINT8_COUNT)
+    {
+        error("Too many continue statements inside a loop.");
+        return;
+    }
+
+    emitLoop(*currentLoopStart);
+    consume(TOKEN_SEMICOLON, "Expect ';' after continue keyword.");
 }
 
 static void declaration()
@@ -877,6 +933,14 @@ static void statement()
     else if (match(TOKEN_WHILE))
     {
         whileStatement();
+    }
+    else if (match(TOKEN_BREAK))
+    {
+        breakStatement();
+    }
+    else if (match(TOKEN_CONTINUE))
+    {
+        continueStatement();
     }
     else
     {
