@@ -1,5 +1,5 @@
-#ifndef clox_memory_h
-#define clox_memory_h
+#ifndef purr_memory_h
+#define purr_memory_h
 
 #include "common.h"
 #include "object.h"

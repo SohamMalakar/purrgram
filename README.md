@@ -22,6 +22,7 @@ project-name
 │
 └───test
 │ test.prr
+| fibo.prr
 ```
 
 - `README.md`: Provides an overview of the project and instructions on how to use the Makefile.
