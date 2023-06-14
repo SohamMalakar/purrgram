@@ -1,4 +1,10 @@
-# Purrgram
+<h1 align="center">
+  <br>
+    <img src="logo/cat.svg" alt="logo" width="384">
+  <br><br>
+  Purrgram
+  <br><br>
+</h1>
 
 This project is a C project that utilizes a Makefile for building, running, and cleaning the project. It provides an organized file structure for the project, along with instructions on how to use the Makefile.
 
