@@ -29,6 +29,9 @@ project-name
 └───test
 │ test.prr
 | fibo.prr
+|
+└───logo
+| cat.svg
 ```
 
 - `README.md`: Provides an overview of the project and instructions on how to use the Makefile.
@@ -40,6 +43,7 @@ project-name
 - `release`: Directory to store release build artifacts.
 - `src`: Directory to store source code files.
 - `test`: Directory to store test cases.
+- `logo`: Directory to store project logos or other related assets.
 
 ## Usage
 
