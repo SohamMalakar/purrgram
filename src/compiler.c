@@ -31,6 +31,7 @@ typedef enum
     PREC_UNARY,      // ! -
     PREC_EXPONENT,   // **
     PREC_CALL,       // . ()
+    PREC_SUBSCRIPT,
     PREC_PRIMARY
 } Precedence;
 
@@ -567,9 +568,58 @@ static void unary(bool canAssign)
     }
 }
 
+static void list(bool canAssign)
+{
+    int itemCount = 0;
+    if (!check(TOKEN_RIGHT_BRACKET))
+    {
+        do
+        {
+            if (check(TOKEN_RIGHT_BRACKET))
+            {
+                // Trailing comma case
+                break;
+            }
+
+            parsePrecedence(PREC_OR);
+
+            if (itemCount == UINT8_COUNT)
+            {
+                error("Cannot have more than 256 items in a list literal.");
+            }
+            itemCount++;
+        } while (match(TOKEN_COMMA));
+    }
+
+    consume(TOKEN_RIGHT_BRACKET, "Expect ']' after list literal.");
+
+    emitByte(OP_BUILD_LIST);
+    emitByte(itemCount);
+    return;
+}
+
+static void subscript(bool canAssign)
+{
+    parsePrecedence(PREC_OR);
+    consume(TOKEN_RIGHT_BRACKET, "Expect ']' after index.");
+
+    if (canAssign && match(TOKEN_EQUAL))
+    {
+        expression();
+        emitByte(OP_STORE_SUBSCR);
+    }
+    else
+    {
+        emitByte(OP_INDEX_SUBSCR);
+    }
+    return;
+}
+
 ParseRule rules[] = {
     [TOKEN_LEFT_PAREN] = {grouping, call, PREC_CALL},
     [TOKEN_RIGHT_PAREN] = {NULL, NULL, PREC_NONE},
+    [TOKEN_LEFT_BRACKET] = {list, subscript, PREC_SUBSCRIPT},
+    [TOKEN_RIGHT_BRACKET] = {NULL, NULL, PREC_NONE},
     [TOKEN_COMMA] = {NULL, NULL, PREC_NONE},
     [TOKEN_DOT] = {NULL, NULL, PREC_NONE},
     [TOKEN_MINUS] = {unary, binary, PREC_TERM},
@@ -754,7 +804,7 @@ static void ifStatement()
 
     while (!check(TOKEN_EOF) && !check(TOKEN_ELIF) && !check(TOKEN_ELSE) && !check(TOKEN_END))
     {
-        declaration();
+        statement();
     }
 
     int exitJump = emitJump(OP_JUMP);
@@ -771,7 +821,7 @@ static void ifStatement()
 
         while (!check(TOKEN_EOF) && !check(TOKEN_ELIF) && !check(TOKEN_ELSE) && !check(TOKEN_END))
         {
-            declaration();
+            statement();
         }
 
         int nextExitJump = emitJump(OP_JUMP);
@@ -794,7 +844,7 @@ static void ifStatement()
 
         while (!check(TOKEN_EOF) && !check(TOKEN_END))
         {
-            declaration();
+            statement();
         }
     }
 
@@ -847,7 +897,7 @@ static void whileStatement()
 
     while (!check(TOKEN_EOF) && !check(TOKEN_END))
     {
-        declaration();
+        statement();
     }
 
     emitLoop(loopStart);

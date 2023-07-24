@@ -35,6 +35,12 @@ static void freeObject(Obj *object)
         FREE_ARRAY(char, string->chars, string->length + 1);
         FREE(ObjString, object);
         break;
+    case OBJ_LIST: {
+        ObjList *list = (ObjList *)object;
+        FREE_ARRAY(Value *, list->items, list->count);
+        FREE(ObjList, object);
+        break;
+    }
     }
     }
 }

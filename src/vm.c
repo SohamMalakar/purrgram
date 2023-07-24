@@ -28,6 +28,39 @@ static Value clockNative(int argCount, Value *args)
     return NUMBER_VAL((double)clock() / CLOCKS_PER_SEC);
 }
 
+static Value appendNative(int argCount, Value *args)
+{
+    // Append a value to the end of a list increasing the list's length by 1
+    if (argCount != 2 || !IS_LIST(args[0]))
+    {
+        // Handle error
+    }
+    ObjList *list = AS_LIST(args[0]);
+    Value item = args[1];
+    appendToList(list, item);
+    return NONE_VAL;
+}
+
+static Value deleteNative(int argCount, Value *args)
+{
+    // Delete an item from a list at the given index.
+    if (argCount != 2 || !IS_LIST(args[0]) || !IS_NUMBER(args[1]))
+    {
+        // Handle error
+    }
+
+    ObjList *list = AS_LIST(args[0]);
+    int index = AS_NUMBER(args[1]);
+
+    if (!isValidListIndex(list, index))
+    {
+        // Handle error
+    }
+
+    deleteFromList(list, index);
+    return NONE_VAL;
+}
+
 static void resetStack()
 {
     vm.stackTop = vm.stack;
@@ -81,6 +114,8 @@ void initVM()
 
     defineNative("print", printNative);
     defineNative("clock", clockNative);
+    defineNative("append", appendNative);
+    defineNative("delete", deleteNative);
 }
 
 void freeVM()
@@ -154,7 +189,8 @@ static bool callValue(Value callee, int argCount)
 
 static bool isFalsey(Value value)
 {
-    return IS_NONE(value) || (IS_BOOL(value) && !AS_BOOL(value));
+    return IS_NONE(value) || (IS_BOOL(value) && !AS_BOOL(value)) || (IS_NUMBER(value) && !AS_NUMBER(value)) ||
+           (IS_STRING(value) && !AS_STRING(value)->length) || (IS_LIST(value) && !AS_LIST(value)->count);
 }
 
 static void concatenate()
@@ -267,6 +303,92 @@ static InterpretResult run()
                 runtimeError("Undefined variable '%s'.", name->chars);
                 return INTERPRET_RUNTIME_ERROR;
             }
+            break;
+        }
+        case OP_BUILD_LIST: {
+            // Stack before: [item1, item2, ..., itemN] and after: [list]
+            ObjList *list = newList();
+            uint8_t itemCount = READ_BYTE();
+
+            // Add items to list
+            push(OBJ_VAL(list)); // So list isn't sweeped by GC in appendToList
+            for (int i = itemCount; i > 0; i--)
+            {
+                appendToList(list, peek(i));
+            }
+            pop();
+
+            // Pop items from stack
+            while (itemCount-- > 0)
+            {
+                pop();
+            }
+
+            push(OBJ_VAL(list));
+            break;
+        }
+        case OP_INDEX_SUBSCR: {
+            // Stack before: [list, index] and after: [index(list, index)]
+            Value v_index = pop();
+            Value v_list = pop();
+            Value result;
+
+            if (!IS_LIST(v_list))
+            {
+                runtimeError("Invalid type to index into.");
+                return INTERPRET_RUNTIME_ERROR;
+            }
+
+            ObjList *list = AS_LIST(v_list);
+
+            if (!IS_NUMBER(v_index))
+            {
+                runtimeError("List index is not a number.");
+                return INTERPRET_RUNTIME_ERROR;
+            }
+
+            int index = AS_NUMBER(v_index);
+
+            if (!isValidListIndex(list, index))
+            {
+                runtimeError("List index out of range.");
+                return INTERPRET_RUNTIME_ERROR;
+            }
+
+            result = indexFromList(list, AS_NUMBER(v_index));
+            push(result);
+            break;
+        }
+        case OP_STORE_SUBSCR: {
+            // Stack before: [list, index, item] and after: [item]
+            Value item = pop();
+            Value v_index = pop();
+            Value v_list = pop();
+
+            if (!IS_LIST(v_list))
+            {
+                runtimeError("Cannot store value in a non-list.");
+                return INTERPRET_RUNTIME_ERROR;
+            }
+
+            ObjList *list = AS_LIST(v_list);
+
+            if (!IS_NUMBER(v_index))
+            {
+                runtimeError("List index is not a number.");
+                return INTERPRET_RUNTIME_ERROR;
+            }
+
+            int index = AS_NUMBER(v_index);
+
+            if (!isValidListIndex(list, index))
+            {
+                runtimeError("Invalid list index.");
+                return INTERPRET_RUNTIME_ERROR;
+            }
+
+            storeToList(list, index, item);
+            push(item);
             break;
         }
         case OP_EQUAL: {
