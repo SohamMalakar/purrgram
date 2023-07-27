@@ -1,0 +1,11 @@
+def fact(x):
+    var f = 1;
+    while x > 0:
+        f = f * x;
+        x = x - 1;
+    end
+    return f;
+end
+
+
+print(fact(5));

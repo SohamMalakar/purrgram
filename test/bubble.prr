@@ -1,0 +1,25 @@
+#!/usr/bin/env purr
+
+def bubble_sort(arr, len):
+    var i = 0;
+    var j;
+    var temp;
+    while i < len - 1:
+        j = 0;
+        while j < len - i - 1:
+            if arr[j] > arr[j + 1]:
+                temp = arr[j];
+                arr[j] = arr[j + 1];
+                arr[j + 1] = temp;
+            end
+            j = j + 1;
+        end
+        i = i + 1;
+    end
+end
+
+
+var my_list = [64, 34, 25, 12, 22, 11, 90];
+print("Original list: ", my_list, "\n");
+bubble_sort(my_list, 6);
+print("Sorted list: ", my_list, "\n");
