@@ -26,7 +26,11 @@ typedef enum
     PREC_AND,        // and
     PREC_EQUALITY,   // == !=
     PREC_COMPARISON, // < > <= >=
-    PREC_TERM,       // + -
+    PREC_SHIFT,      // << >>
+    PREC_BAND,       // &
+    PREC_XOR,        // ^
+    PREC_BOR,        // |
+    PREC_TERM,       // + - ~
     PREC_FACTOR,     // * /
     PREC_UNARY,      // ! -
     PREC_EXPONENT,   // **
@@ -456,6 +460,21 @@ static void binary(bool canAssign)
     case TOKEN_STAR_STAR:
         emitByte(OP_POW);
         break;
+    case TOKEN_AMPERSAND:
+        emitByte(OP_BAND);
+        break;
+    case TOKEN_PIPE:
+        emitByte(OP_BOR);
+        break;
+    case TOKEN_CARET:
+        emitByte(OP_XOR);
+        break;
+    case TOKEN_GREATER_GREATER:
+        emitByte(OP_LSHIFT);
+        break;
+    case TOKEN_LESS_LESS:
+        emitByte(OP_RSHIFT);
+        break;
     default:
         return; // Unreachable.
     }
@@ -563,6 +582,9 @@ static void unary(bool canAssign)
     case TOKEN_MINUS:
         emitByte(OP_NEGATE);
         break;
+    case TOKEN_TILDE:
+        emitByte(OP_BNOT);
+        break;
     default:
         return; // Unreachable.
     }
@@ -637,6 +659,12 @@ ParseRule rules[] = {
     [TOKEN_GREATER_EQUAL] = {NULL, binary, PREC_COMPARISON},
     [TOKEN_LESS] = {NULL, binary, PREC_COMPARISON},
     [TOKEN_LESS_EQUAL] = {NULL, binary, PREC_COMPARISON},
+    [TOKEN_AMPERSAND] = {NULL, binary, PREC_BAND},
+    [TOKEN_PIPE] = {NULL, binary, PREC_BOR},
+    [TOKEN_CARET] = {NULL, binary, PREC_XOR},
+    [TOKEN_TILDE] = {unary, NULL, PREC_TERM},
+    [TOKEN_GREATER_GREATER] = {NULL, binary, PREC_SHIFT},
+    [TOKEN_LESS_LESS] = {NULL, binary, PREC_SHIFT},
     [TOKEN_IDENTIFIER] = {variable, NULL, PREC_NONE},
     [TOKEN_STRING] = {string, NULL, PREC_NONE},
     [TOKEN_NUMBER] = {number, NULL, PREC_NONE},

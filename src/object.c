@@ -160,7 +160,7 @@ void storeToList(ObjList *list, int index, Value value)
 
 Value indexFromList(ObjList *list, int index)
 {
-    return list->items[index];
+    return list->items[(index < 0) * list->count + index];
 }
 
 void deleteFromList(ObjList *list, int index)
@@ -175,9 +175,31 @@ void deleteFromList(ObjList *list, int index)
 
 bool isValidListIndex(ObjList *list, int index)
 {
-    if (index < 0 || index > list->count - 1)
+    if (index < -list->count || index > list->count - 1)
     {
         return false;
     }
     return true;
+}
+
+Value indexFromString(ObjString *str, int index)
+{
+    char ch[2] = "\0";
+    ch[0] = str->chars[(index < 0) * str->length + index];
+    return OBJ_VAL(copyString(ch, 1));
+}
+
+bool isValidStringIndex(ObjString *str, int index)
+{
+    if (index < -str->length || index > str->length - 1)
+    {
+        return false;
+    }
+    return true;
+}
+
+bool isInt(double num)
+{
+    double fraction = num - ((long)num);
+    return fraction == 0;
 }

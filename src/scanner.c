@@ -307,11 +307,19 @@ Token scanToken()
     case '=':
         return makeToken(match('=') ? TOKEN_EQUAL_EQUAL : TOKEN_EQUAL);
     case '<':
-        return makeToken(match('=') ? TOKEN_LESS_EQUAL : TOKEN_LESS);
+        return makeToken(match('=') ? TOKEN_LESS_EQUAL : (match('<') ? TOKEN_LESS_LESS : TOKEN_LESS));
     case '>':
-        return makeToken(match('=') ? TOKEN_GREATER_EQUAL : TOKEN_GREATER);
+        return makeToken(match('=') ? TOKEN_GREATER_EQUAL : (match('>') ? TOKEN_GREATER_GREATER : TOKEN_GREATER));
     case '"':
         return string();
+    case '&':
+        return makeToken(TOKEN_AMPERSAND);
+    case '|':
+        return makeToken(TOKEN_PIPE);
+    case '^':
+        return makeToken(TOKEN_CARET);
+    case '~':
+        return makeToken(TOKEN_TILDE);
     }
 
     return errorToken("Unexpected character.");

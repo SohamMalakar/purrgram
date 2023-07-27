@@ -69,6 +69,8 @@ ObjNative *newNative(NativeFn function);
 
 ObjString *takeString(char *chars, int length);
 ObjString *copyString(const char *chars, int length);
+Value indexFromString(ObjString *str, int index);
+bool isValidStringIndex(ObjString *str, int index);
 
 ObjList *newList();
 void appendToList(ObjList *list, Value value);
@@ -76,6 +78,8 @@ void storeToList(ObjList *list, int index, Value value);
 Value indexFromList(ObjList *list, int index);
 void deleteFromList(ObjList *list, int index);
 bool isValidListIndex(ObjList *list, int index);
+
+bool isInt(double num);
 
 void printObject(Value value);
 
