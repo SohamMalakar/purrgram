@@ -1,0 +1,46 @@
+
+def partition(array, low, high):
+    var pivot = array[high];
+    var i = low - 1;
+    var j = low;
+    
+    var temp;
+
+    while j < high:
+        if array[j] <= pivot:
+            i = i + 1;
+            temp = array[i];
+            array[i] = array[j];
+            array[j] = temp;
+        end
+        j = j + 1;
+    end
+    
+    temp = array[i + 1];
+    array[i + 1] = array[high];
+    array[high] = temp;
+
+    return i + 1;
+end
+
+
+def quickSort(array, low, high):
+    var pi;
+    if low < high:
+        pi = partition(array, low, high);
+        quickSort(array, low, pi - 1);
+        quickSort(array, pi + 1, high);
+    end
+end
+
+
+var data = [1, 7, 4, 1, 10, 9, -2];
+print("Unsorted Array\n");
+print(data, "\n");
+
+var size = len(data);
+
+quickSort(data, 0, size - 1);
+
+print("Sorted Array in Ascending Order\n");
+print(data, "\n");
