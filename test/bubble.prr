@@ -1,9 +1,8 @@
 #!/usr/bin/env purr
 
 def bubble_sort(arr, len):
-    var i = 0;
-    var j;
-    var temp;
+    var i = 0, j, temp;
+
     while i < len - 1:
         j = 0;
         while j < len - i - 1:

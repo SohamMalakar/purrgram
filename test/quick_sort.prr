@@ -1,10 +1,6 @@
 
 def partition(array, low, high):
-    var pivot = array[high];
-    var i = low - 1;
-    var j = low;
-    
-    var temp;
+    var i = low - 1, j = low, pivot = array[high], temp;
 
     while j < high:
         if array[j] <= pivot:

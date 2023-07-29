@@ -1,9 +1,7 @@
 #!/usr/bin/env purr
 
 def matrix_multiplication(rows1, cols1, matrix1, rows2, cols2, matrix2):
-    var i;
-    var j;
-    var k;
+    var i, j, k;
 
     if cols1 != rows2:
         return;
