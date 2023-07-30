@@ -1,7 +1,13 @@
 #!/usr/bin/env purr
 
-def matrix_multiplication(rows1, cols1, matrix1, rows2, cols2, matrix2):
+def matrix_multiplication(matrix1, matrix2):
     var i, j, k;
+
+    var rows1 = len(matrix1);
+    var cols1 = len(matrix1[0]);
+
+    var rows2 = len(matrix2);
+    var cols2 = len(matrix2[0]);
 
     if cols1 != rows2:
         return;
@@ -41,7 +47,7 @@ var matrix2 = [[1, 2, 3],
                [4, 5, 6],
                [7, 8, 9]];
 
-var result = matrix_multiplication(3, 3, matrix1, 3, 3, matrix2);
+var result = matrix_multiplication(matrix1, matrix2);
 
 if result == none:
     print("incompatible matrices");
