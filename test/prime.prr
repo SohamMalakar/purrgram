@@ -1,0 +1,36 @@
+
+def sieve_of_eratosthenes(n):
+    var primes = [true] * (n + 1);
+
+    primes[0] = false;
+    primes[1] = false;
+
+    var p = 2;
+    var i;
+
+    while p ** 2 <= n:
+        if primes[p]:
+            i = p ** 2;
+            while i < n + 1:
+                primes[i] = false;
+                i = i + p;
+            end
+        end
+        p = p + 1;
+    end
+
+    i = 0;
+    var x = [];
+
+    while i < n + 1:
+        if primes[i]:
+            x = x + [i];
+        end
+        i = i + 1;
+    end
+    
+    return x;
+end
+
+
+print(sieve_of_eratosthenes(1000));

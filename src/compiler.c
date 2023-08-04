@@ -26,11 +26,16 @@ typedef enum
     PREC_AND,        // and
     PREC_EQUALITY,   // == !=
     PREC_COMPARISON, // < > <= >=
-    PREC_TERM,       // + -
+    PREC_SHIFT,      // << >>
+    PREC_BAND,       // &
+    PREC_XOR,        // ^
+    PREC_BOR,        // |
+    PREC_TERM,       // + - ~
     PREC_FACTOR,     // * /
     PREC_UNARY,      // ! -
     PREC_EXPONENT,   // **
     PREC_CALL,       // . ()
+    PREC_SUBSCRIPT,
     PREC_PRIMARY
 } Precedence;
 
@@ -455,6 +460,21 @@ static void binary(bool canAssign)
     case TOKEN_STAR_STAR:
         emitByte(OP_POW);
         break;
+    case TOKEN_AMPERSAND:
+        emitByte(OP_BAND);
+        break;
+    case TOKEN_PIPE:
+        emitByte(OP_BOR);
+        break;
+    case TOKEN_CARET:
+        emitByte(OP_XOR);
+        break;
+    case TOKEN_GREATER_GREATER:
+        emitByte(OP_LSHIFT);
+        break;
+    case TOKEN_LESS_LESS:
+        emitByte(OP_RSHIFT);
+        break;
     default:
         return; // Unreachable.
     }
@@ -562,14 +582,66 @@ static void unary(bool canAssign)
     case TOKEN_MINUS:
         emitByte(OP_NEGATE);
         break;
+    case TOKEN_TILDE:
+        emitByte(OP_BNOT);
+        break;
     default:
         return; // Unreachable.
     }
 }
 
+static void list(bool canAssign)
+{
+    int itemCount = 0;
+    if (!check(TOKEN_RIGHT_BRACKET))
+    {
+        do
+        {
+            if (check(TOKEN_RIGHT_BRACKET))
+            {
+                // Trailing comma case
+                break;
+            }
+
+            parsePrecedence(PREC_OR);
+
+            if (itemCount == UINT8_COUNT)
+            {
+                error("Cannot have more than 256 items in a list literal.");
+            }
+            itemCount++;
+        } while (match(TOKEN_COMMA));
+    }
+
+    consume(TOKEN_RIGHT_BRACKET, "Expect ']' after list literal.");
+
+    emitByte(OP_BUILD_LIST);
+    emitByte(itemCount);
+    return;
+}
+
+static void subscript(bool canAssign)
+{
+    parsePrecedence(PREC_OR);
+    consume(TOKEN_RIGHT_BRACKET, "Expect ']' after index.");
+
+    if (canAssign && match(TOKEN_EQUAL))
+    {
+        expression();
+        emitByte(OP_STORE_SUBSCR);
+    }
+    else
+    {
+        emitByte(OP_INDEX_SUBSCR);
+    }
+    return;
+}
+
 ParseRule rules[] = {
     [TOKEN_LEFT_PAREN] = {grouping, call, PREC_CALL},
     [TOKEN_RIGHT_PAREN] = {NULL, NULL, PREC_NONE},
+    [TOKEN_LEFT_BRACKET] = {list, subscript, PREC_SUBSCRIPT},
+    [TOKEN_RIGHT_BRACKET] = {NULL, NULL, PREC_NONE},
     [TOKEN_COMMA] = {NULL, NULL, PREC_NONE},
     [TOKEN_DOT] = {NULL, NULL, PREC_NONE},
     [TOKEN_MINUS] = {unary, binary, PREC_TERM},
@@ -587,6 +659,12 @@ ParseRule rules[] = {
     [TOKEN_GREATER_EQUAL] = {NULL, binary, PREC_COMPARISON},
     [TOKEN_LESS] = {NULL, binary, PREC_COMPARISON},
     [TOKEN_LESS_EQUAL] = {NULL, binary, PREC_COMPARISON},
+    [TOKEN_AMPERSAND] = {NULL, binary, PREC_BAND},
+    [TOKEN_PIPE] = {NULL, binary, PREC_BOR},
+    [TOKEN_CARET] = {NULL, binary, PREC_XOR},
+    [TOKEN_TILDE] = {unary, NULL, PREC_TERM},
+    [TOKEN_GREATER_GREATER] = {NULL, binary, PREC_SHIFT},
+    [TOKEN_LESS_LESS] = {NULL, binary, PREC_SHIFT},
     [TOKEN_IDENTIFIER] = {variable, NULL, PREC_NONE},
     [TOKEN_STRING] = {string, NULL, PREC_NONE},
     [TOKEN_NUMBER] = {number, NULL, PREC_NONE},
@@ -693,19 +771,24 @@ static void funDeclaration()
 
 static void varDeclaration()
 {
-    uint8_t global = parseVariable("Expect variable name.");
+    do
+    {
+        uint8_t global = parseVariable("Expect variable name.");
 
-    if (match(TOKEN_EQUAL))
-    {
-        expression();
-    }
-    else
-    {
-        emitByte(OP_NONE);
-    }
+        if (match(TOKEN_EQUAL))
+        {
+            expression();
+        }
+        else
+        {
+            emitByte(OP_NONE);
+        }
+
+        defineVariable(global);
+    } while (match(TOKEN_COMMA));
 
     consume(TOKEN_SEMICOLON, "Expect ';' after variable declaration.");
-    defineVariable(global);
+    // defineVariable(global);
 }
 
 static void synchronize()
@@ -754,7 +837,7 @@ static void ifStatement()
 
     while (!check(TOKEN_EOF) && !check(TOKEN_ELIF) && !check(TOKEN_ELSE) && !check(TOKEN_END))
     {
-        declaration();
+        statement();
     }
 
     int exitJump = emitJump(OP_JUMP);
@@ -771,7 +854,7 @@ static void ifStatement()
 
         while (!check(TOKEN_EOF) && !check(TOKEN_ELIF) && !check(TOKEN_ELSE) && !check(TOKEN_END))
         {
-            declaration();
+            statement();
         }
 
         int nextExitJump = emitJump(OP_JUMP);
@@ -794,7 +877,7 @@ static void ifStatement()
 
         while (!check(TOKEN_EOF) && !check(TOKEN_END))
         {
-            declaration();
+            statement();
         }
     }
 
@@ -847,7 +930,7 @@ static void whileStatement()
 
     while (!check(TOKEN_EOF) && !check(TOKEN_END))
     {
-        declaration();
+        statement();
     }
 
     emitLoop(loopStart);

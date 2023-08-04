@@ -1,0 +1,56 @@
+#!/usr/bin/env purr
+
+def matrix_multiplication(matrix1, matrix2):
+    var i, j, k;
+
+    var rows1 = len(matrix1);
+    var cols1 = len(matrix1[0]);
+
+    var rows2 = len(matrix2);
+    var cols2 = len(matrix2[0]);
+
+    if cols1 != rows2:
+        return;
+    end
+
+    var result = [];
+
+    i = 0;
+    while i < rows1:
+        # append(result, ([0] * cols2));
+        result = result + [[0] * cols2];
+        i = i + 1;
+    end
+
+    i = 0;
+    while i < rows1:
+        j = 0;
+        while j < cols2:
+            k = 0;
+            while k < cols1:
+                result[i][j] = result[i][j] + matrix1[i][k] * matrix2[k][j];
+                k = k + 1;
+            end
+            j = j + 1;
+        end   
+        i = i + 1;
+    end
+    return result;
+end
+
+
+var matrix1 = [[1, 2, 3],
+               [4, 5, 6],
+               [7, 8, 9]];
+
+var matrix2 = [[1, 2, 3],
+               [4, 5, 6],
+               [7, 8, 9]];
+
+var result = matrix_multiplication(matrix1, matrix2);
+
+if result == none:
+    print("incompatible matrices");
+else:
+    print(result);
+end

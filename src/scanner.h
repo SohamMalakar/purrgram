@@ -6,6 +6,8 @@ typedef enum
     // Single-character tokens.
     TOKEN_LEFT_PAREN,
     TOKEN_RIGHT_PAREN,
+    TOKEN_LEFT_BRACKET,
+    TOKEN_RIGHT_BRACKET,
     TOKEN_COMMA,
     TOKEN_DOT,
     TOKEN_MINUS,
@@ -25,6 +27,13 @@ typedef enum
     TOKEN_GREATER_EQUAL,
     TOKEN_LESS,
     TOKEN_LESS_EQUAL,
+    // Bitwise operator tokens.
+    TOKEN_AMPERSAND,
+    TOKEN_PIPE,
+    TOKEN_CARET,
+    TOKEN_TILDE,
+    TOKEN_GREATER_GREATER,
+    TOKEN_LESS_LESS,
     // Literals.
     TOKEN_IDENTIFIER,
     TOKEN_STRING,

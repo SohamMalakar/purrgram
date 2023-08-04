@@ -4,6 +4,7 @@
 #include <string.h>
 #include <time.h>
 
+#include "cio.h"
 #include "common.h"
 #include "compiler.h"
 #include "debug.h"
@@ -23,9 +24,69 @@ static Value printNative(int argCount, Value *args)
     return NONE_VAL;
 }
 
+static Value inputNative(int argCount, Value *args)
+{
+    if (argCount > 1)
+    {
+        // Handle error
+    }
+
+    if (argCount == 1)
+    {
+        printValue(args[0]);
+    }
+
+    string str = input(NULL);
+    return OBJ_VAL(takeString(str, strlen(str)));
+}
+
 static Value clockNative(int argCount, Value *args)
 {
     return NUMBER_VAL((double)clock() / CLOCKS_PER_SEC);
+}
+
+static Value lenNative(int argCount, Value *args)
+{
+    if (argCount != 1 || !IS_LIST(args[0]) || !IS_STRING(args[0]))
+    {
+        // Handle error
+    }
+
+    int len = IS_LIST(args[0]) ? AS_LIST(args[0])->count : AS_STRING(args[0])->length;
+    return NUMBER_VAL(len);
+}
+
+static Value appendNative(int argCount, Value *args)
+{
+    // Append a value to the end of a list increasing the list's length by 1
+    if (argCount != 2 || !IS_LIST(args[0]))
+    {
+        // Handle error
+    }
+    ObjList *list = AS_LIST(args[0]);
+    Value item = args[1];
+    appendToList(list, item);
+    return NONE_VAL;
+}
+
+static Value deleteNative(int argCount, Value *args)
+{
+    // Delete an item from a list at the given index.
+    if (argCount != 2 || !IS_LIST(args[0]) || !IS_NUMBER(args[1]))
+    {
+        // Handle error
+    }
+
+    ObjList *list = AS_LIST(args[0]);
+    int index = AS_NUMBER(args[1]);
+
+    if (!isValidListIndex(list, index))
+    {
+        // Handle error
+    }
+
+    deleteFromList(list, index);
+    return NONE_VAL;
 }
 
 static void resetStack()
@@ -80,7 +141,11 @@ void initVM()
     initTable(&vm.strings);
 
     defineNative("print", printNative);
+    defineNative("input", inputNative);
     defineNative("clock", clockNative);
+    defineNative("len", lenNative);
+    defineNative("append", appendNative);
+    defineNative("delete", deleteNative);
 }
 
 void freeVM()
@@ -154,7 +219,8 @@ static bool callValue(Value callee, int argCount)
 
 static bool isFalsey(Value value)
 {
-    return IS_NONE(value) || (IS_BOOL(value) && !AS_BOOL(value));
+    return IS_NONE(value) || (IS_BOOL(value) && !AS_BOOL(value)) || (IS_NUMBER(value) && !AS_NUMBER(value)) ||
+           (IS_STRING(value) && !AS_STRING(value)->length) || (IS_LIST(value) && !AS_LIST(value)->count);
 }
 
 static void concatenate()
@@ -170,6 +236,88 @@ static void concatenate()
 
     ObjString *result = takeString(chars, length);
     push(OBJ_VAL(result));
+}
+
+static void concat_list()
+{
+    ObjList *b = AS_LIST(pop());
+    ObjList *a = AS_LIST(pop());
+    ObjList *result = newList();
+
+    for (int i = 0; i < a->count; i++)
+        appendToList(result, a->items[i]);
+
+    for (int i = 0; i < b->count; i++)
+        appendToList(result, b->items[i]);
+
+    push(OBJ_VAL(result));
+}
+
+static bool scaler_str_mul()
+{
+    double num;
+    ObjString *str;
+
+    if (IS_STRING(peek(0)))
+    {
+        str = AS_STRING(pop());
+        num = AS_NUMBER(pop());
+    }
+    else
+    {
+        num = AS_NUMBER(pop());
+        str = AS_STRING(pop());
+    }
+
+    if (!isInt(num))
+    {
+        runtimeError("Strings must be multiplied with integer only.");
+        return false;
+    }
+
+    int length = str->length * num;
+    char *chars = ALLOCATE(char, length + 1);
+
+    for (int i = 0; i < num; i++)
+        memcpy(chars + i * str->length, str->chars, str->length);
+
+    chars[length] = '\0';
+
+    ObjString *result = takeString(chars, length);
+    push(OBJ_VAL(result));
+    return true;
+}
+
+static bool scaler_list_mul()
+{
+    double num;
+    ObjList *list;
+
+    if (IS_STRING(peek(0)))
+    {
+        list = AS_LIST(pop());
+        num = AS_NUMBER(pop());
+    }
+    else
+    {
+        num = AS_NUMBER(pop());
+        list = AS_LIST(pop());
+    }
+
+    if (!isInt(num))
+    {
+        runtimeError("Lists must be multiplied with integer only.");
+        return false;
+    }
+
+    int length = list->count * num;
+    ObjList *result = newList();
+
+    for (int i = 0; i < length; i++)
+        appendToList(result, list->items[i % list->count]);
+
+    push(OBJ_VAL(result));
+    return true;
 }
 
 inline static double mod(double x, double y)
@@ -196,6 +344,23 @@ static InterpretResult run()
         double b = AS_NUMBER(pop());                                                                                   \
         double a = AS_NUMBER(pop());                                                                                   \
         push(valueType(a op b));                                                                                       \
+    } while (false)
+#define BITWISE_OP(valueType, op)                                                                                      \
+    do                                                                                                                 \
+    {                                                                                                                  \
+        if (!IS_NUMBER(peek(0)) || !IS_NUMBER(peek(1)))                                                                \
+        {                                                                                                              \
+            runtimeError("Operands must be numbers.");                                                                 \
+            return INTERPRET_RUNTIME_ERROR;                                                                            \
+        }                                                                                                              \
+        double b = AS_NUMBER(pop());                                                                                   \
+        double a = AS_NUMBER(pop());                                                                                   \
+        if (!isInt(a) || !isInt(b))                                                                                    \
+        {                                                                                                              \
+            runtimeError("Numbers must be of integer type.");                                                          \
+            return INTERPRET_RUNTIME_ERROR;                                                                            \
+        }                                                                                                              \
+        push(valueType((int)a op(int) b));                                                                             \
     } while (false)
 
     for (;;)
@@ -269,6 +434,108 @@ static InterpretResult run()
             }
             break;
         }
+        case OP_BUILD_LIST: {
+            // Stack before: [item1, item2, ..., itemN] and after: [list]
+            ObjList *list = newList();
+            uint8_t itemCount = READ_BYTE();
+
+            // Add items to list
+            push(OBJ_VAL(list)); // So list isn't sweeped by GC in appendToList
+            for (int i = itemCount; i > 0; i--)
+            {
+                appendToList(list, peek(i));
+            }
+            pop();
+
+            // Pop items from stack
+            while (itemCount-- > 0)
+            {
+                pop();
+            }
+
+            push(OBJ_VAL(list));
+            break;
+        }
+        case OP_INDEX_SUBSCR: {
+            // Stack before: [list, index] and after: [index(list, index)]
+            Value v_index = pop();
+            Value collection = pop();
+            Value result;
+
+            if (!IS_LIST(collection) && !IS_STRING(collection))
+            {
+                runtimeError("Invalid type to index into.");
+                return INTERPRET_RUNTIME_ERROR;
+            }
+
+            if (!IS_NUMBER(v_index))
+            {
+                runtimeError("Index is not a number.");
+                return INTERPRET_RUNTIME_ERROR;
+            }
+
+            int index = AS_NUMBER(v_index);
+
+            if (IS_STRING(collection))
+            {
+                ObjString *str = AS_STRING(collection);
+
+                if (!isValidStringIndex(str, index))
+                {
+                    runtimeError("String index out of range.");
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+
+                result = indexFromString(str, AS_NUMBER(v_index));
+            }
+            else
+            {
+                ObjList *list = AS_LIST(collection);
+
+                if (!isValidListIndex(list, index))
+                {
+                    runtimeError("List index out of range.");
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+
+                result = indexFromList(list, AS_NUMBER(v_index));
+            }
+
+            push(result);
+            break;
+        }
+        case OP_STORE_SUBSCR: {
+            // Stack before: [list, index, item] and after: [item]
+            Value item = pop();
+            Value v_index = pop();
+            Value v_list = pop();
+
+            if (!IS_LIST(v_list))
+            {
+                runtimeError("Cannot store value in a non-list.");
+                return INTERPRET_RUNTIME_ERROR;
+            }
+
+            ObjList *list = AS_LIST(v_list);
+
+            if (!IS_NUMBER(v_index))
+            {
+                runtimeError("List index is not a number.");
+                return INTERPRET_RUNTIME_ERROR;
+            }
+
+            int index = AS_NUMBER(v_index);
+
+            if (!isValidListIndex(list, index))
+            {
+                runtimeError("Invalid list index.");
+                return INTERPRET_RUNTIME_ERROR;
+            }
+
+            storeToList(list, index, item);
+            push(item);
+            break;
+        }
         case OP_EQUAL: {
             Value b = pop();
             Value a = pop();
@@ -286,6 +553,10 @@ static InterpretResult run()
             {
                 concatenate();
             }
+            else if (IS_LIST(peek(0)) && IS_LIST(peek(1)))
+            {
+                concat_list();
+            }
             else if (IS_NUMBER(peek(0)) && IS_NUMBER(peek(1)))
             {
                 double b = AS_NUMBER(pop());
@@ -294,7 +565,7 @@ static InterpretResult run()
             }
             else
             {
-                runtimeError("Operands must be two numbers or two strings.");
+                runtimeError("Operands must be two numbers or two strings or two list.");
                 return INTERPRET_RUNTIME_ERROR;
             }
             break;
@@ -302,9 +573,25 @@ static InterpretResult run()
         case OP_SUBTRACT:
             BINARY_OP(NUMBER_VAL, -);
             break;
-        case OP_MULTIPLY:
-            BINARY_OP(NUMBER_VAL, *);
+        case OP_MULTIPLY: {
+            if (IS_STRING(peek(0)) && IS_NUMBER(peek(1)) || IS_NUMBER(peek(0)) && IS_STRING(peek(1)))
+            {
+                if (!scaler_str_mul())
+                    return INTERPRET_RUNTIME_ERROR;
+            }
+            else if (IS_LIST(peek(0)) && IS_NUMBER(peek(1)) || IS_NUMBER(peek(0)) && IS_LIST(peek(1)))
+            {
+                if (!scaler_list_mul())
+                    return INTERPRET_RUNTIME_ERROR;
+            }
+            else if (IS_NUMBER(peek(0)) && IS_NUMBER(peek(1)))
+            {
+                double b = AS_NUMBER(pop());
+                double a = AS_NUMBER(pop());
+                push(NUMBER_VAL(a * b));
+            }
             break;
+        }
         case OP_DIVIDE:
             BINARY_OP(NUMBER_VAL, /);
             break;
@@ -351,6 +638,39 @@ static InterpretResult run()
                 return INTERPRET_RUNTIME_ERROR;
             }
             push(NUMBER_VAL(-AS_NUMBER(pop())));
+            break;
+        case OP_BAND:
+            BITWISE_OP(NUMBER_VAL, &);
+            break;
+        case OP_BOR:
+            BITWISE_OP(NUMBER_VAL, |);
+            break;
+        case OP_XOR:
+            BITWISE_OP(NUMBER_VAL, ^);
+            break;
+        case OP_BNOT:
+            if (!IS_NUMBER(peek(0)))
+            {
+                runtimeError("Operand must be a number.");
+                return INTERPRET_RUNTIME_ERROR;
+            }
+
+            double num = AS_NUMBER(pop());
+
+            if (!isInt(num))
+            {
+                runtimeError("Number must be of integer type.");
+                return INTERPRET_RUNTIME_ERROR;
+            }
+
+            push(NUMBER_VAL(~(int)num));
+            break;
+            break;
+        case OP_LSHIFT:
+            BITWISE_OP(NUMBER_VAL, >>);
+            break;
+        case OP_RSHIFT:
+            BITWISE_OP(NUMBER_VAL, <<);
             break;
         case OP_JUMP: {
             uint16_t offset = READ_SHORT();

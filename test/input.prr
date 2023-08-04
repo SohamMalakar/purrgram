@@ -1,0 +1,5 @@
+#!/usr/bin/env purr
+
+var name = input("say your name: ");
+print("your name is ", name, ", that contains ", 
+                        len(name), " characters.");
