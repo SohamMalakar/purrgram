@@ -1,0 +1,63 @@
+name: C/C++ CI
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  job_1:
+    name: ubuntu build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: make
+        run: |
+          make
+          cd sanitizer
+          make
+      - name: Upload the artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: purrgram_ubuntu
+          path: |
+            build/release/purr
+            build/sanitizer
+
+  job_2:
+    name: windows build
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: make
+        run: |
+          make
+          cd sanitizer
+          make
+      - name: Upload the artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: purrgram_windows
+          path: |
+            build/release/purr.exe
+            build/sanitizer.exe
+
+  job_3:
+    name: macOS build
+    runs-on: macOS-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: make
+        run: |
+          make
+          cd sanitizer
+          make
+      - name: Upload the artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: purrgram_macOS
+          path: |
+            build/release/purr
+            build/sanitizer
+
